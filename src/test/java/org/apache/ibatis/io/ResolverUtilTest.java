@@ -69,7 +69,7 @@ class ResolverUtilTest {
   }
 
   @Test
-  void findImplementations() {
+  void findImplementations() {// 这个测试相当漂亮，整个路径加载过程都展示出来了
     ResolverUtil<VFS> resolverUtil = new ResolverUtil<>();
     resolverUtil.findImplementations(VFS.class, "org.apache.ibatis.io");
     Set<Class<? extends VFS>> classSets = resolverUtil.getClasses();

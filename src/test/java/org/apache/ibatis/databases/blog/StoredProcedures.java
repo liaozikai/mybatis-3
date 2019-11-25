@@ -17,6 +17,9 @@ package org.apache.ibatis.databases.blog;
 
 import java.sql.*;
 
+/**
+ * 该类可以多看几篇，之前比较少写存储过程。在java中写存储过程，并且映射到对应的sql文件中
+ */
 public class StoredProcedures {
   public static void selectTwoSetsOfTwoAuthors(int p1, int p2, ResultSet[] rs1, ResultSet[] rs2) throws SQLException {
     try (Connection conn = DriverManager.getConnection("jdbc:default:connection")) {

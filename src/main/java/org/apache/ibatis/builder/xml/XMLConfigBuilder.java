@@ -66,6 +66,7 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   public XMLConfigBuilder(Reader reader, String environment, Properties props) {
+    // XPathParser初始化过程是比较麻烦的
     this(new XPathParser(reader, true, props, new XMLMapperEntityResolver()), environment, props);
   }
 
@@ -95,27 +96,45 @@ public class XMLConfigBuilder extends BaseBuilder {
       throw new BuilderException("Each XMLConfigBuilder can only be used once.");
     }
     parsed = true;
+    // 解析文件中configuration标签的节点
     parseConfiguration(parser.evalNode("/configuration"));
     return configuration;
   }
 
-  private void parseConfiguration(XNode root) {
+  private void parseConfiguration(XNode root) {// root表明configuration标签节点是根元素
     try {
       //issue #117 read properties first
+      // 该方法将所有的属性都放在解析器和configuration中
       propertiesElement(root.evalNode("properties"));
+      // 解析settings标签定义的属性，赋值到settings（具体可参考CustomizedSettingsMapperConfig.xml）
       Properties settings = settingsAsProperties(root.evalNode("settings"));
+      // 加载自定义的vfs，也就是资源处理器，CustomizedSettingsMapperConfig.xml文件中用的是JBoss版本的vfs
       loadCustomVfs(settings);
+      // 加载自定义的日志实现，CustomizedSettingsMapperConfig.xml文件中用的是SLF4J
       loadCustomLogImpl(settings);
+      // 解析文件中标签为typeAliases的节点，该节点是用于实体文件和其别名的映射关系,放到了typeAliases的map中
       typeAliasesElement(root.evalNode("typeAliases"));
+      // 解析文件中标签为plugins的节点，该节点是可作为拦截器，处理一些逻辑。拦截器会被防止到configuration的interceptorChain属性中，
+      // 用法可参考CustomizedSettingsMapperConfig.xml
       pluginElement(root.evalNode("plugins"));
+      // 解析文件中标签为objectFactory的节点，设置到configuration的objectFactory属性中（不知道这个用来干嘛）
       objectFactoryElement(root.evalNode("objectFactory"));
+      // 解析文件中标签为objectWrapperFactory的节点，设置到configuration的objectWrapperFactory属性中（不知道这个用来干嘛）
       objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+      // 解析文件中标签为reflectorFactory的节点，设置到configuration的reflectorFactory属性中（不知道这个用来干嘛）
       reflectorFactoryElement(root.evalNode("reflectorFactory"));
+      // 将settings设置的属性赋值给configuration对应的属性，如果没有则使用默认值
       settingsElement(settings);
+
       // read it after objectFactory and objectWrapperFactory issue #631
+      // 从上面的注释可以看出，objectFactory和objectWrapperFactory与environment相关
+      // 注意，这个环境字段是比较重要的，可以设置事务管理和数据源
       environmentsElement(root.evalNode("environments"));
+      // 解析文件中标签为databaseIdProvider的节点，设置到dataBaseId中
       databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+      // 将自定义的类型转换控制器设置到typeHandlerRegistry中
       typeHandlerElement(root.evalNode("typeHandlers"));
+      // 解析标签名为mappers的节点，注意，对应mapper的属性不同，则其加载的方式不同
       mapperElement(root.evalNode("mappers"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -220,21 +239,28 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private void propertiesElement(XNode context) throws Exception {
     if (context != null) {
+      // 获取当前标签下，子节点的属性名称和值的对应关系，并放到defaults中
       Properties defaults = context.getChildrenAsProperties();
+      // 获取当前标签属性为resource的值
       String resource = context.getStringAttribute("resource");
+      // 获取当前标签属性为url的值
       String url = context.getStringAttribute("url");
-      if (resource != null && url != null) {
+      if (resource != null && url != null) {// resource和url不能同时存在
         throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
       }
-      if (resource != null) {
+      if (resource != null) {// 从引用的resource文件加载属性
         defaults.putAll(Resources.getResourceAsProperties(resource));
-      } else if (url != null) {
+      } else if (url != null) {// 从引用的url对应的文件加载属性
         defaults.putAll(Resources.getUrlAsProperties(url));
       }
+
+      // 获取原先configuration中初始化的属性变量
       Properties vars = configuration.getVariables();
-      if (vars != null) {
+      if (vars != null) {// 放到default中
         defaults.putAll(vars);
       }
+
+      // 将所有的属性放到解析器和configuration中
       parser.setVariables(defaults);
       configuration.setVariables(defaults);
     }
@@ -276,7 +302,8 @@ public class XMLConfigBuilder extends BaseBuilder {
       }
       for (XNode child : context.getChildren()) {
         String id = child.getStringAttribute("id");
-        if (isSpecifiedEnvironment(id)) {
+        if (isSpecifiedEnvironment(id)) {// 如果是指定id
+          // 获取配置在文件中的事务管理器和数据源，设置到环境中，并且将环境设置到configuration中
           TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
           DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
           DataSource dataSource = dsFactory.getDataSource();
@@ -358,26 +385,32 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   private void mapperElement(XNode parent) throws Exception {
-    if (parent != null) {
+    if (parent != null) {// 如果mappers对应的节点不为null
+      // 遍历mappers下的所有节点（可参考CustomizedSettingsMapperConfig.xml文件）
       for (XNode child : parent.getChildren()) {
-        if ("package".equals(child.getName())) {
+        if ("package".equals(child.getName())) {// 若mapper节点的名称为package
+          // 获取属性name对应的值
           String mapperPackage = child.getStringAttribute("name");
+          // 扫描该包下的所有mapper接口，构建mapper接口与mapper.xml文件的对应关系，并放到configuration的mapperRegistry的knownMappers中
           configuration.addMappers(mapperPackage);
         } else {
+          // 获取对应属性为resource，url或class的值，三者只能存在一个，否则保存
           String resource = child.getStringAttribute("resource");
           String url = child.getStringAttribute("url");
           String mapperClass = child.getStringAttribute("class");
-          if (resource != null && url == null && mapperClass == null) {
+          if (resource != null && url == null && mapperClass == null) {// 若resource不为空
             ErrorContext.instance().resource(resource);
-            InputStream inputStream = Resources.getResourceAsStream(resource);
+            InputStream inputStream = Resources.getResourceAsStream(resource);// 加载resource文件到输入流
+            // 通过输入流等参数构造mapper解析器
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+            // 对对应的文件进行解析
             mapperParser.parse();
-          } else if (resource == null && url != null && mapperClass == null) {
+          } else if (resource == null && url != null && mapperClass == null) {// 若url不为空，其实跟resource是差不多的处理手法
             ErrorContext.instance().resource(url);
             InputStream inputStream = Resources.getUrlAsStream(url);
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
             mapperParser.parse();
-          } else if (resource == null && url == null && mapperClass != null) {
+          } else if (resource == null && url == null && mapperClass != null) {// 如果class不为空，则将对应类加载到configuration中的knownMap中
             Class<?> mapperInterface = Resources.classForName(mapperClass);
             configuration.addMapper(mapperInterface);
           } else {

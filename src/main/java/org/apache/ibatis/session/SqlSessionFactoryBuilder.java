@@ -46,7 +46,10 @@ public class SqlSessionFactoryBuilder {
 
   public SqlSessionFactory build(Reader reader, String environment, Properties properties) {
     try {
+      // 通过传递的参数，构造解析器。该解析器通过reader加载了xml文件，并转化为document对象。同时，初始化过程中，还
+      // 初始化了configuration对象
       XMLConfigBuilder parser = new XMLConfigBuilder(reader, environment, properties);
+      // 调用parse方法填充configuration对象的属性，并返回一个DefaultSqlSessionFactory，重点是parse方法
       return build(parser.parse());
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error building SqlSession.", e);

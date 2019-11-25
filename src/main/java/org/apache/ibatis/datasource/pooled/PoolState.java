@@ -23,9 +23,12 @@ import java.util.List;
  */
 public class PoolState {
 
+  // 数据源
   protected PooledDataSource dataSource;
 
+  // 闲置的数据库连接
   protected final List<PooledConnection> idleConnections = new ArrayList<>();
+  // 活跃的数据库连接
   protected final List<PooledConnection> activeConnections = new ArrayList<>();
   protected long requestCount = 0;
   protected long accumulatedRequestTime = 0;

@@ -52,9 +52,14 @@ public class UnpooledDataSource implements DataSource {
   private Integer defaultNetworkTimeout;
 
   static {
+    // 类加载过程中，就获取所有的驱动类试题。getDrivers方法中，可以看到在DriverManager加载过程中，就获取系统配置jdbc.drivers所对应的值，然后加载驱动
+    // 这里差点没被坑死。。。getDrivers这个方法，里面有loadInitialDrivers方法，而该方法中，调用到了 AccessController.doPrivileged这个方法。该方法查询是否有配置
+    // jdbc.drivers。同时也调用了ServiceLoader类，该类中默认找到所有META-INF/service下的所有java.sql.Driver下的驱动，然后又一种特殊的方式（看不到的）将其赋值到了
+    // 类型为CopyOnWriteArrayList的registeredDrivers中（很隐秘，很特别，可以装逼用）
     Enumeration<Driver> drivers = DriverManager.getDrivers();
     while (drivers.hasMoreElements()) {
       Driver driver = drivers.nextElement();
+      // 将所有加载的驱动都方法该map中
       registeredDrivers.put(driver.getClass().getName(), driver);
     }
   }
@@ -196,6 +201,7 @@ public class UnpooledDataSource implements DataSource {
    *
    * @param defaultNetworkTimeout
    *          The time in milliseconds to wait for the database operation to complete.
+   *         设置完成数据库操作的等待时间
    * @since 3.5.2
    */
   public void setDefaultNetworkTimeout(Integer defaultNetworkTimeout) {
@@ -217,16 +223,20 @@ public class UnpooledDataSource implements DataSource {
   }
 
   private Connection doGetConnection(Properties properties) throws SQLException {
+    // 初始化驱动
     initializeDriver();
+    // 获取connection
     Connection connection = DriverManager.getConnection(url, properties);
+    // 设置connection对应的属性
     configureConnection(connection);
     return connection;
   }
 
   private synchronized void initializeDriver() throws SQLException {
-    if (!registeredDrivers.containsKey(driver)) {
+    if (!registeredDrivers.containsKey(driver)) {// 若是注册的驱动中不包含要用到的驱动名称
       Class<?> driverType;
       try {
+        // 获取驱动器对应类
         if (driverClassLoader != null) {
           driverType = Class.forName(driver, true, driverClassLoader);
         } else {
@@ -234,6 +244,7 @@ public class UnpooledDataSource implements DataSource {
         }
         // DriverManager requires the driver to be loaded via the system ClassLoader.
         // http://www.kfu.com/~nsayer/Java/dyn-jdbc.html
+        // 实例化驱动，并加载到map中
         Driver driverInstance = (Driver)driverType.getDeclaredConstructor().newInstance();
         DriverManager.registerDriver(new DriverProxy(driverInstance));
         registeredDrivers.put(driver, driverInstance);

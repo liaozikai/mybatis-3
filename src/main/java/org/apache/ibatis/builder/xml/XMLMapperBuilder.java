@@ -90,14 +90,16 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   public void parse() {
-    if (!configuration.isResourceLoaded(resource)) {
-      configurationElement(parser.evalNode("/mapper"));
-      configuration.addLoadedResource(resource);
-      bindMapperForNamespace();
+    if (!configuration.isResourceLoaded(resource)) {// 若是没有加载resource org/apache/ibatis/binding/BoundAuthorMapper.xml
+      configurationElement(parser.evalNode("/mapper"));// 解析以mapper作为标签的节点，将mapper的孩子节点进行处理，设置在configuration对应的属性字段中
+      configuration.addLoadedResource(resource);// 将该路径设置到loadedResource的字段中
+      bindMapperForNamespace();// 对命名空间对应的xml文件进行解析
     }
-
+    // 解析待处理的结果集map
     parsePendingResultMaps();
+    // 解析待处理的CacheRefs
     parsePendingCacheRefs();
+    // 解析待处理的声明
     parsePendingStatements();
   }
 
@@ -106,17 +108,130 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private void configurationElement(XNode context) {
+    // context的内容如下（也就是将整个xml文件都加载到XNode上了）：
+    // <mapper namespace="org.apache.ibatis.binding.BoundBlogMapper">
+    //    <select resultType="int" id="selectRandom">
+    //    select CAST(RANDOM()*1000000 as INTEGER) a from SYSIBM.SYSDUMMY1
+    //  </select>
+    //    <select resultType="org.apache.ibatis.domain.blog.Blog" id="selectBlogsFromXML">
+    //    SELECT * FROM blog
+    //  </select>
+    //    <resultMap type="Blog" id="blogWithPosts">
+    //        <id column="id" property="id"/>
+    //        <result column="title" property="title"/>
+    //        <association select="selectAuthorWithInlineParams" column="author_id" property="author"/>
+    //        <collection select="selectPostsForBlog" column="id" property="posts"/>
+    //    </resultMap>
+    //    <resultMap type="Blog" id="blogUsingConstructor">
+    //        <constructor>
+    //            <idArg column="id" javaType="_int"/>
+    //            <arg column="title" javaType="java.lang.String"/>
+    //            <arg select="org.apache.ibatis.binding.BoundAuthorMapper.selectAuthor" column="author_id" javaType="org.apache.ibatis.domain.blog.Author"/>
+    //            <arg select="selectPostsForBlog" column="id" javaType="java.util.List"/>
+    //        </constructor>
+    //    </resultMap>
+    //    <resultMap type="Blog" id="blogUsingConstructorWithResultMap">
+    //        <constructor>
+    //            <idArg column="id" javaType="_int"/>
+    //            <arg column="title" javaType="java.lang.String"/>
+    //            <arg resultMap="org.apache.ibatis.binding.BoundAuthorMapper.authorResultMap" javaType="org.apache.ibatis.domain.blog.Author"/>
+    //            <arg select="selectPostsForBlog" column="id" javaType="java.util.List"/>
+    //        </constructor>
+    //    </resultMap>
+    //    <resultMap type="Blog" id="blogUsingConstructorWithResultMapAndProperties">
+    //        <constructor>
+    //            <idArg column="id" javaType="_int"/>
+    //            <arg column="title" javaType="java.lang.String"/>
+    //            <arg resultMap="org.apache.ibatis.binding.BoundAuthorMapper.authorResultMapWithProperties" javaType="org.apache.ibatis.domain.blog.Author"/>
+    //            <arg select="selectPostsForBlog" column="id" javaType="java.util.List"/>
+    //        </constructor>
+    //    </resultMap>
+    //    <resultMap type="Blog" id="blogUsingConstructorWithResultMapCollection">
+    //        <constructor>
+    //            <idArg column="id" javaType="_int"/>
+    //            <arg column="title" javaType="java.lang.String"/>
+    //            <arg resultMap="org.apache.ibatis.binding.BoundAuthorMapper.authorResultMap" javaType="org.apache.ibatis.domain.blog.Author"/>
+    //            <arg resultMap="blogWithPosts" javaType="java.util.List"/>
+    //        </constructor>
+    //    </resultMap>
+    //    <select resultMap="blogWithPosts" parameterType="int" id="selectBlogWithPostsUsingSubSelect">
+    //    select * from Blog where id = #{id}
+    //  </select>
+    //    <select resultType="org.apache.ibatis.domain.blog.Author" parameterType="int" id="selectAuthorWithInlineParams">
+    //    select * from author where id = #{id}
+    //  </select>
+    //    <select resultType="Post" parameterType="int" id="selectPostsForBlog">
+    //    select * from Post where blog_id = #{blog_id}
+    //  </select>
+    //    <select resultMap="blogUsingConstructor" parameterType="int" id="selectBlogByIdUsingConstructor">
+    //    select * from Blog where id = #{id}
+    //  </select>
+    //    <select resultMap="blogUsingConstructorWithResultMap" parameterType="int" id="selectBlogUsingConstructorWithResultMap">
+    //      select b.*,
+    //      	a.id as author_id,
+    //      	a.username as author_username,
+    //      	a.password as author_password,
+    //      	a.email as author_email,
+    //      	a.bio as author_bio,
+    //      	a.favourite_section
+    //      from Blog b join Author a
+    //      on b.author_id = a.id
+    //      where b.id = #{id}
+    //    </select>
+    //    <select resultMap="blogUsingConstructorWithResultMapAndProperties" parameterType="int" id="selectBlogUsingConstructorWithResultMapAndProperties">
+    //      select b.*,
+    //      	a.id as author_id,
+    //      	a.username as author_username,
+    //      	a.password as author_password,
+    //      	a.email as author_email,
+    //      	a.bio as author_bio,
+    //      	a.favourite_section
+    //      from Blog b join Author a
+    //      on b.author_id = a.id
+    //      where b.id = #{id}
+    //    </select>
+    //    <select resultMap="blogUsingConstructorWithResultMapCollection" parameterType="int" id="selectBlogUsingConstructorWithResultMapCollection">
+    //      select b.*, p.*,
+    //      	a.id as author_id,
+    //      	a.username as author_username,
+    //      	a.password as author_password,
+    //      	a.email as author_email,
+    //      	a.bio as author_bio,
+    //      	a.favourite_section
+    //      from Blog b
+    //          join Author a on b.author_id = a.id
+    //          join Post p on b.id = p.blog_id
+    //      where b.id = #{id}
+    //    </select>
+    //</mapper>
     try {
-      String namespace = context.getStringAttribute("namespace");
+      String namespace = context.getStringAttribute("namespace");// org.apache.ibatis.binding.BoundBlogMapper
       if (namespace == null || namespace.equals("")) {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
       builderAssistant.setCurrentNamespace(namespace);
-      cacheRefElement(context.evalNode("cache-ref"));
-      cacheElement(context.evalNode("cache"));
+      // 下面的5个方法都调用到了context.evalNode()方法，用于获取对应的xml文件中的相应XNode节点
+      cacheRefElement(context.evalNode("cache-ref"));// 该文件没有设置cache-ref
+      cacheElement(context.evalNode("cache"));// 该文件没有设置cache
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+      // 以该方法为例，解析mapper下的以resultMap为标签的XNode节点，该代码没有返回数据，但是深入进去可以发现，设置到了builderAssistant.configure里的resultMap属性了
+      // resultMaps = {Configuration$StrictMap@3575}  size = 10
+      // 0 = {HashMap$Node@3591} "blogUsingConstructor" ->
+      // 1 = {HashMap$Node@3592} "org.apache.ibatis.binding.BoundBlogMapper.blogUsingConstructorWithResultMap" ->
+      // 2 = {HashMap$Node@3593} "org.apache.ibatis.binding.BoundBlogMapper.blogUsingConstructorWithResultMapCollection" ->
+      // 3 = {HashMap$Node@3594} "org.apache.ibatis.binding.BoundBlogMapper.blogUsingConstructor" ->
+      // 4 = {HashMap$Node@3595} "org.apache.ibatis.binding.BoundBlogMapper.blogWithPosts" ->
+      // 5 = {HashMap$Node@3596} "blogUsingConstructorWithResultMap" ->
+      // 6 = {HashMap$Node@3597} "blogWithPosts" ->
+      // 7 = {HashMap$Node@3598} "blogUsingConstructorWithResultMapAndProperties" ->
+      // 8 = {HashMap$Node@3599} "blogUsingConstructorWithResultMapCollection" ->
+      // 9 = {HashMap$Node@3600} "org.apache.ibatis.binding.BoundBlogMapper.blogUsingConstructorWithResultMapAndProperties" ->
+      // 其中value值没有展开，从中可以看出，全限定名和简称都复制了一遍，且value值是相同的。
+      // resultMapElements的解析方法就不去看了，都是解析里面有什么属性，并且属性的值等，最后就是放在resultMap中。
       resultMapElements(context.evalNodes("/mapper/resultMap"));
       sqlElement(context.evalNodes("/mapper/sql"));
+
+      // 该方法则是解析xml文件中含select等标签的节点
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
@@ -124,9 +239,39 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private void buildStatementFromContext(List<XNode> list) {
+    // 直接将所有select|insert|update|delete的节点传进来
+    // 0 = {XNode@3584} "<select resultType="int" id="selectRandom">\n    select CAST(RANDOM()*1000000 as INTEGER) a from SYSIBM.SYSDUMMY1\n  </select>\n"
+    //1 = {XNode@3585} "<select resultType="org.apache.ibatis.domain.blog.Blog" id="selectBlogsFromXML">\n    SELECT * FROM blog\n  </select>\n"
+    //2 = {XNode@3586} "<select resultMap="blogWithPosts" parameterType="int" id="selectBlogWithPostsUsingSubSelect">\n    select * from Blog where id = #{id}\n  </select>\n"
+    //3 = {XNode@3587} "<select resultType="org.apache.ibatis.domain.blog.Author" parameterType="int" id="selectAuthorWithInlineParams">\n    select * from author where id = #{id}\n  </select>\n"
+    //4 = {XNode@3588} "<select resultType="Post" parameterType="int" id="selectPostsForBlog">\n    select * from Post where blog_id = #{blog_id}\n  </select>\n"
+    //5 = {XNode@3589} "<select resultMap="blogUsingConstructor" parameterType="int" id="selectBlogByIdUsingConstructor">\n    select * from Blog where id = #{id}\n  </select>\n"
+    //6 = {XNode@3590} "<select resultMap="blogUsingConstructorWithResultMap" parameterType="int" id="selectBlogUsingConstructorWithResultMap">\n      select b.*,\n      \ta.id as author_id,\n      \ta.username as author_username,\n      \ta.password as author_password,\n      \ta.email as author_email,\n      \ta.bio as author_bio,\n      \ta.favourite_section\n      from Blog b join Author a\n      on b.author_id = a.id\n      where b.id = #{id}\n    </select>\n"
+    //7 = {XNode@3591} "<select resultMap="blogUsingConstructorWithResultMapAndProperties" parameterType="int" id="selectBlogUsingConstructorWithResultMapAndProperties">\n      select b.*,\n      \ta.id as author_id,\n      \ta.username as author_username,\n      \ta.password as author_password,\n      \ta.email as author_email,\n      \ta.bio as author_bio,\n      \ta.favourite_section\n      from Blog b join Author a\n      on b.author_id = a.id\n      where b.id = #{id}\n    </select>\n"
+    //8 = {XNode@3592} "<select resultMap="blogUsingConstructorWithResultMapCollection" parameterType="int" id="selectBlogUsingConstructorWithResultMapCollection">\n      select b.*, p.*,\n      \ta.id as author_id,\n      \ta.username as author_username,\n      \ta.password as author_password,\n      \ta.email as author_email,\n      \ta.bio as author_bio,\n      \ta.favourite_section\n      from Blog b\n          join Author a on b.author_id = a.id\n          join Post p on b.id = p.blog_id\n      where b.id = #{id}\n    </select>\n"
     if (configuration.getDatabaseId() != null) {
       buildStatementFromContext(list, configuration.getDatabaseId());
     }
+    // XMLStatementBuilder的parseStatementNode方法相当重要，解析select中的属性。最终放在了builderAssistant的configuration的mapperStatement中，如下:
+    // mappedStatements = {Configuration$StrictMap@3645}  size = 18
+    // 0 = {HashMap$Node@3663} "selectAuthorWithInlineParams" ->
+    // 1 = {HashMap$Node@3664} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogUsingConstructorWithResultMapAndProperties" ->
+    // 2 = {HashMap$Node@3665} "selectBlogUsingConstructorWithResultMapCollection" ->
+    // 3 = {HashMap$Node@3666} "org.apache.ibatis.binding.BoundBlogMapper.selectRandom" ->
+    // 4 = {HashMap$Node@3667} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogWithPostsUsingSubSelect" ->
+    // 5 = {HashMap$Node@3668} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogUsingConstructorWithResultMap" ->
+    // 6 = {HashMap$Node@3669} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogsFromXML" ->
+    // 7 = {HashMap$Node@3670} "selectPostsForBlog" ->
+    // 8 = {HashMap$Node@3671} "selectBlogWithPostsUsingSubSelect" ->
+    // 9 = {HashMap$Node@3672} "org.apache.ibatis.binding.BoundBlogMapper.selectPostsForBlog" ->
+    // 10 = {HashMap$Node@3673} "selectBlogUsingConstructorWithResultMapAndProperties" ->
+    // 11 = {HashMap$Node@3674} "org.apache.ibatis.binding.BoundBlogMapper.selectAuthorWithInlineParams" ->
+    // 12 = {HashMap$Node@3675} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogByIdUsingConstructor" ->
+    // 13 = {HashMap$Node@3676} "org.apache.ibatis.binding.BoundBlogMapper.selectBlogUsingConstructorWithResultMapCollection" ->
+    // 14 = {HashMap$Node@3677} "selectRandom" ->
+    // 15 = {HashMap$Node@3678} "selectBlogByIdUsingConstructor" ->
+    // 16 = {HashMap$Node@3679} "selectBlogUsingConstructorWithResultMap" ->
+    // 17 = {HashMap$Node@3680} "selectBlogsFromXML" ->
     buildStatementFromContext(list, null);
   }
 
@@ -419,21 +564,21 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private void bindMapperForNamespace() {
-    String namespace = builderAssistant.getCurrentNamespace();
+    String namespace = builderAssistant.getCurrentNamespace(); // 获取当前命名空间
     if (namespace != null) {
       Class<?> boundType = null;
       try {
-        boundType = Resources.classForName(namespace);
+        boundType = Resources.classForName(namespace); // 通过命名空间加载该类
       } catch (ClassNotFoundException e) {
         //ignore, bound type is not required
       }
-      if (boundType != null) {
-        if (!configuration.hasMapper(boundType)) {
+      if (boundType != null) { // 若该类不为null
+        if (!configuration.hasMapper(boundType)) { //
           // Spring may not know the real resource name so we set a flag
           // to prevent loading again this resource from the mapper interface
           // look at MapperAnnotationBuilder#loadXmlResource
-          configuration.addLoadedResource("namespace:" + namespace);
-          configuration.addMapper(boundType);
+          configuration.addLoadedResource("namespace:" + namespace);// 将当前命名空间设置到configuration的loadedResource的map中
+          configuration.addMapper(boundType);// 将boundType设置到configuration中的mapperRegistry的knownMappers中，并对加载的文件进行解析
         }
       }
     }

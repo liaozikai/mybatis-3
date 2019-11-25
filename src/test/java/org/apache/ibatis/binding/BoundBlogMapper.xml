@@ -22,7 +22,7 @@
 
 <mapper namespace="org.apache.ibatis.binding.BoundBlogMapper">
 
-    <select id="selectRandom" resultType="int">
+  <select id="selectRandom" resultType="int">
     select CAST(RANDOM()*1000000 as INTEGER) a from SYSIBM.SYSDUMMY1
   </select>
 

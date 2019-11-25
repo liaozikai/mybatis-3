@@ -82,7 +82,7 @@ public class ResolverUtil<T> {
     private Class<?> parent;
 
     /** Constructs an IsA test using the supplied Class as the parent class/interface. */
-    public IsA(Class<?> parentType) {
+    public IsA(Class<?> parentType) { // 将传递进来的类作为父类
       this.parent = parentType;
     }
 
@@ -171,11 +171,11 @@ public class ResolverUtil<T> {
    * @param packageNames one or more package names to scan (including subpackages) for classes
    */
   public ResolverUtil<T> findImplementations(Class<?> parent, String... packageNames) {
-    if (packageNames == null) {
+    if (packageNames == null) { // 包名 org.apache.ibatis.io
       return this;
     }
 
-    Test test = new IsA(parent);
+    Test test = new IsA(parent);// 得到的Test is assignable to VFS
     for (String pkg : packageNames) {
       find(test, pkg);
     }
@@ -214,12 +214,12 @@ public class ResolverUtil<T> {
    *        classes, e.g. {@code net.sourceforge.stripes}
    */
   public ResolverUtil<T> find(Test test, String packageName) {
-    String path = getPackagePath(packageName);
+    String path = getPackagePath(packageName);// org/apache/ibatis/io
 
     try {
       List<String> children = VFS.getInstance().list(path);
       for (String child : children) {
-        if (child.endsWith(".class")) {
+        if (child.endsWith(".class")) {// 找出所有类型为test的子类，放到ResolverUtil中，getClasses方法返回的就是这里添加的match的类
           addIfMatching(test, child);
         }
       }

@@ -265,6 +265,23 @@ public class XPathParser {
   }
 
   private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
+    // XPathParser的构造过程不是那么简单，最终构造的内容如下：
+    // this = {XPathParser@1778}
+    // document = null
+    // validation = true
+    // entityResolver = {XMLMapperEntityResolver@1777}
+    //  No fields to display
+    // variables = null
+    // xpath = {XPathImpl@1811}
+    //  variableResolver = null
+    //  functionResolver = null
+    //  origVariableResolver = null
+    //  origFunctionResolver = null
+    //  namespaceContext = null
+    //  prefixResolver = null
+    //  featureSecureProcessing = false
+    //  overrideDefaultParser = false
+    //  featureManager = {JdkXmlFeatures@1788}
     this.validation = validation;
     this.entityResolver = entityResolver;
     this.variables = variables;

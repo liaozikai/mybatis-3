@@ -40,15 +40,16 @@ public class ArrayTypeHandler extends BaseTypeHandler<Object> {
 
   private static final ConcurrentHashMap<Class<?>, String> STANDARD_MAPPING;
   static {
+    // 加载类的同时，初始化该map
     STANDARD_MAPPING = new ConcurrentHashMap<>();
     STANDARD_MAPPING.put(BigDecimal.class, JdbcType.NUMERIC.name());
     STANDARD_MAPPING.put(BigInteger.class, JdbcType.BIGINT.name());
     STANDARD_MAPPING.put(boolean.class, JdbcType.BOOLEAN.name());
     STANDARD_MAPPING.put(Boolean.class, JdbcType.BOOLEAN.name());
-    STANDARD_MAPPING.put(byte[].class, JdbcType.VARBINARY.name());
+    STANDARD_MAPPING.put(byte[].class, JdbcType.VARBINARY.name());// byte数组对应varbinary类型
     STANDARD_MAPPING.put(byte.class, JdbcType.TINYINT.name());
     STANDARD_MAPPING.put(Byte.class, JdbcType.TINYINT.name());
-    STANDARD_MAPPING.put(Calendar.class, JdbcType.TIMESTAMP.name());
+    STANDARD_MAPPING.put(Calendar.class, JdbcType.TIMESTAMP.name());//下面这三个对应的jdbc类型注意些
     STANDARD_MAPPING.put(java.sql.Date.class, JdbcType.DATE.name());
     STANDARD_MAPPING.put(java.util.Date.class, JdbcType.TIMESTAMP.name());
     STANDARD_MAPPING.put(double.class, JdbcType.DOUBLE.name());
@@ -68,7 +69,7 @@ public class ArrayTypeHandler extends BaseTypeHandler<Object> {
     STANDARD_MAPPING.put(String.class, JdbcType.VARCHAR.name());
     STANDARD_MAPPING.put(Time.class, JdbcType.TIME.name());
     STANDARD_MAPPING.put(Timestamp.class, JdbcType.TIMESTAMP.name());
-    STANDARD_MAPPING.put(URL.class, JdbcType.DATALINK.name());
+    STANDARD_MAPPING.put(URL.class, JdbcType.DATALINK.name());// url对应jdbc的dataLink类型
   }
 
   public ArrayTypeHandler() {
@@ -78,20 +79,21 @@ public class ArrayTypeHandler extends BaseTypeHandler<Object> {
   @Override
   public void setNonNullParameter(PreparedStatement ps, int i, Object parameter, JdbcType jdbcType)
       throws SQLException {
-    if (parameter instanceof Array) {
+    if (parameter instanceof Array) {// 如果该参数是数组的子类，从继承树中可看出是JDBCArray等
       // it's the user's responsibility to properly free() the Array instance
       ps.setArray(i, (Array) parameter);
     } else {
-      if (!parameter.getClass().isArray()) {
+      if (!parameter.getClass().isArray()) {// 如果该参数不是一个数组类型
         throw new TypeException(
             "ArrayType Handler requires SQL array or java array parameter and does not support type "
                 + parameter.getClass());
       }
-      Class<?> componentType = parameter.getClass().getComponentType();
-      String arrayTypeName = resolveTypeName(componentType);
+      // 注意区分定义时数组类型和数组元素的类型
+      Class<?> componentType = parameter.getClass().getComponentType();// 返回数组定义时的类型
+      String arrayTypeName = resolveTypeName(componentType);// java类型对应的jdbc类型
       Array array = ps.getConnection().createArrayOf(arrayTypeName, (Object[]) parameter);
       ps.setArray(i, array);
-      array.free();
+      array.free();// 设置完后就要释放掉
     }
   }
 

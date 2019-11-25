@@ -374,7 +374,7 @@ public class XNode {
   }
 
   private String parseBody(Node node) {
-    String data = getBodyData(node);
+    String data = getBodyData(node); // 以mapper节点为例，mapper节点的data为null，则进入if
     if (data == null) {
       NodeList children = node.getChildNodes();
       for (int i = 0; i < children.getLength(); i++) {

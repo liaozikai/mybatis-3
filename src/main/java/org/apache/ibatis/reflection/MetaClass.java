@@ -36,6 +36,7 @@ public class MetaClass {
 
   private MetaClass(Class<?> type, ReflectorFactory reflectorFactory) {
     this.reflectorFactory = reflectorFactory;
+    // 构造一个对应类型的反射器
     this.reflector = reflectorFactory.findForClass(type);
   }
 
@@ -169,9 +170,9 @@ public class MetaClass {
 
   private StringBuilder buildProperty(String name, StringBuilder builder) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
-    if (prop.hasNext()) {
+    if (prop.hasNext()) {// 判断是否有子类，是以"."来判断的
       String propertyName = reflector.findPropertyName(prop.getName());
-      if (propertyName != null) {
+      if (propertyName != null) {// 若是有的话，则递归调用buildProperty方法
         builder.append(propertyName);
         builder.append(".");
         MetaClass metaProp = metaClassForProperty(propertyName);

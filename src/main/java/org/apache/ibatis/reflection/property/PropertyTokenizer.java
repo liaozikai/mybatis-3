@@ -26,6 +26,12 @@ public class PropertyTokenizer implements Iterator<PropertyTokenizer> {
   private String index;
   private final String children;
 
+  // 通过属性全名获取相关属性值
+  // 以richField为例，则直接返回name为richField
+  // 以richList[0]为例，则返回name为richList
+  // 以richType.richField为例，则返回name为richType。
+  // 该方法是给MetaClass用的，主要就是返回对应属性的Class类型，其中MetaClass中有循环调用该方法的情况。
+  // 如richType.richField，先返回richType，用于构造原数据，然后再获取children，来调用该方法类型。
   public PropertyTokenizer(String fullname) {
     int delim = fullname.indexOf('.');
     if (delim > -1) {

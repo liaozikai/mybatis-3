@@ -56,11 +56,15 @@ public class DefaultObjectFactory implements ObjectFactory, Serializable {
   private  <T> T instantiateClass(Class<T> type, List<Class<?>> constructorArgTypes, List<Object> constructorArgs) {
     try {
       Constructor<T> constructor;
+      // 构造器参数类型为null或者构造器参数为null
       if (constructorArgTypes == null || constructorArgs == null) {
+        // 获取声明的构造器
         constructor = type.getDeclaredConstructor();
         try {
+          // 通过构造器返回实例
           return constructor.newInstance();
         } catch (IllegalAccessException e) {
+          // 若是构造器私有，则通过反射来获取实例
           if (Reflector.canControlMemberAccessible()) {
             constructor.setAccessible(true);
             return constructor.newInstance();
@@ -69,8 +73,10 @@ public class DefaultObjectFactory implements ObjectFactory, Serializable {
           }
         }
       }
+      // 获取带参数的构造器
       constructor = type.getDeclaredConstructor(constructorArgTypes.toArray(new Class[constructorArgTypes.size()]));
       try {
+        // 通过构造器来实例化对象
         return constructor.newInstance(constructorArgs.toArray(new Object[constructorArgs.size()]));
       } catch (IllegalAccessException e) {
         if (Reflector.canControlMemberAccessible()) {
@@ -89,6 +95,7 @@ public class DefaultObjectFactory implements ObjectFactory, Serializable {
     }
   }
 
+  // 解析类的类型
   protected Class<?> resolveInterface(Class<?> type) {
     Class<?> classToCreate;
     if (type == List.class || type == Collection.class || type == Iterable.class) {
@@ -105,6 +112,7 @@ public class DefaultObjectFactory implements ObjectFactory, Serializable {
     return classToCreate;
   }
 
+  // 判断该类是否为集合的子类
   @Override
   public <T> boolean isCollection(Class<T> type) {
     return Collection.class.isAssignableFrom(type);

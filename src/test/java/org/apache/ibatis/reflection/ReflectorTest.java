@@ -232,6 +232,30 @@ class ReflectorTest {
       public int getProp2() {return 0;}
       public int isProp2() {return 0;}
     }
+    // 注意这里，获取BeanClass的反射对象，其中，这个反射对象中的属性已经包含了bean对象的所有属性和方法，如下：
+    // type = {Class@1756} "class org.apache.ibatis.reflection.ReflectorTest$3BeanClass"
+    //readablePropertyNames = {String[3]@1778}
+    // 0 = "prop2"
+    // 1 = "prop1"
+    // 2 = "this$0"
+    //writablePropertyNames = {String[1]@1782}
+    //setMethods = {HashMap@1783}  size = 1
+    // 0 = {HashMap$Node@1786} "this$0" ->
+    //getMethods = {HashMap@1787}  size = 3
+    // 0 = {HashMap$Node@1790} "prop2" ->
+    // 1 = {HashMap$Node@1795} "prop1" ->
+    // 2 = {HashMap$Node@1797} "this$0" ->
+    //setTypes = {HashMap@1798}  size = 1
+    // 0 = {HashMap$Node@1801} "this$0" -> "class org.apache.ibatis.reflection.ReflectorTest"
+    //getTypes = {HashMap@1802}  size = 3
+    // 0 = {HashMap$Node@1805} "prop2" -> "int"
+    // 1 = {HashMap$Node@1807} "prop1" -> "class java.lang.Integer"
+    // 2 = {HashMap$Node@1809} "this$0" -> "class org.apache.ibatis.reflection.ReflectorTest"
+    //defaultConstructor = null
+    //caseInsensitivePropertyMap = {HashMap@1810}  size = 3
+    // 0 = {HashMap$Node@1813} "PROP2" -> "prop2"
+    // 1 = {HashMap$Node@1815} "PROP1" -> "prop1"
+    // 2 = {HashMap$Node@1817} "THIS$0" -> "this$0"
     ReflectorFactory reflectorFactory = new DefaultReflectorFactory();
     Reflector reflector = reflectorFactory.findForClass(BeanClass.class);
 
@@ -242,6 +266,9 @@ class ReflectorTest {
     assertEquals("prop2", reflector.findPropertyName("PROP2"));
 
     assertEquals(Integer.class, reflector.getGetterType("prop1"));
+    // 重点是这里，该方法获得对应属性方法，通过invoke（方法对应类，参数）来执行getProp1方法，这就是反射执行方法的实质；下面是invoke的内容
+    // type = {Class@271} "class java.lang.Integer"
+    //method = {Method@1784} "public java.lang.Integer org.apache.ibatis.reflection.ReflectorTest$3BeanClass.getProp1()"
     Invoker getInvoker = reflector.getGetInvoker("prop1");
     assertEquals(Integer.valueOf(1), getInvoker.invoke(new BeanClass(), null));
 

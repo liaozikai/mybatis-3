@@ -320,6 +320,7 @@ public class PooledDataSource implements DataSource {
   public void forceCloseAll() {
     synchronized (state) {
       expectedConnectionTypeCode = assembleConnectionTypeCode(dataSource.getUrl(), dataSource.getUsername(), dataSource.getPassword());
+      // 获取所有的活跃和闲置连接数，设置有效状态，判断是否自动提交来决定回滚操作
       for (int i = state.activeConnections.size(); i > 0; i--) {
         try {
           PooledConnection conn = state.activeConnections.remove(i - 1);
@@ -362,26 +363,29 @@ public class PooledDataSource implements DataSource {
     return ("" + url + username + password).hashCode();
   }
 
+  // 关闭数据库连接的操作，这里不是真的关闭，只是将连接重新封装放在了闲置list中
   protected void pushConnection(PooledConnection conn) throws SQLException {
 
     synchronized (state) {
-      state.activeConnections.remove(conn);
+      state.activeConnections.remove(conn);// 从活跃连接中移除该连接
       if (conn.isValid()) {
+        // 闲置连接数小于最大闲置连接数，并且当前类型code与目标类型code相等
         if (state.idleConnections.size() < poolMaximumIdleConnections && conn.getConnectionTypeCode() == expectedConnectionTypeCode) {
           state.accumulatedCheckoutTime += conn.getCheckoutTime();
-          if (!conn.getRealConnection().getAutoCommit()) {
+          if (!conn.getRealConnection().getAutoCommit()) {//  若是没自动提交，则回滚
             conn.getRealConnection().rollback();
           }
+          // 封装了一个新的连接
           PooledConnection newConn = new PooledConnection(conn.getRealConnection(), this);
           state.idleConnections.add(newConn);
           newConn.setCreatedTimestamp(conn.getCreatedTimestamp());
           newConn.setLastUsedTimestamp(conn.getLastUsedTimestamp());
-          conn.invalidate();
+          conn.invalidate();// 将当前连接置为无效
           if (log.isDebugEnabled()) {
             log.debug("Returned connection " + newConn.getRealHashCode() + " to pool.");
           }
           state.notifyAll();
-        } else {
+        } else {// 闲置连接数太多了，只能真正关掉它
           state.accumulatedCheckoutTime += conn.getCheckoutTime();
           if (!conn.getRealConnection().getAutoCommit()) {
             conn.getRealConnection().rollback();
@@ -392,7 +396,7 @@ public class PooledDataSource implements DataSource {
           }
           conn.invalidate();
         }
-      } else {
+      } else {// 若该连接本身无效，说明是一个坏连接
         if (log.isDebugEnabled()) {
           log.debug("A bad connection (" + conn.getRealHashCode() + ") attempted to return to the pool, discarding connection.");
         }
@@ -408,32 +412,33 @@ public class PooledDataSource implements DataSource {
     int localBadConnectionCount = 0;
 
     while (conn == null) {
-      synchronized (state) {
-        if (!state.idleConnections.isEmpty()) {
-          // Pool has available connection
+      synchronized (state) {// 加锁，每个state都有对 闲置数据库连接 和 活跃数据库连接的引用。加锁后，其他的请求只能在方法运行后才能获取该对象操作
+        if (!state.idleConnections.isEmpty()) {// 还有闲置的链接
+          // Pool has available connection 获取第一个闲置连接
           conn = state.idleConnections.remove(0);
           if (log.isDebugEnabled()) {
             log.debug("Checked out connection " + conn.getRealHashCode() + " from pool.");
           }
-        } else {
+        } else { // 没有闲置的连接
           // Pool does not have available connection
-          if (state.activeConnections.size() < poolMaximumActiveConnections) {
+          if (state.activeConnections.size() < poolMaximumActiveConnections) {// 虽然没有闲置连接，但是连接数还没到达最大连接数，故而创建一个新的连接
             // Can create new connection
             conn = new PooledConnection(dataSource.getConnection(), this);
             if (log.isDebugEnabled()) {
               log.debug("Created connection " + conn.getRealHashCode() + ".");
             }
-          } else {
+          } else {// 若是不能创建新的连接
             // Cannot create new connection
+            // 获取活跃连接中最旧的连接
             PooledConnection oldestActiveConnection = state.activeConnections.get(0);
-            long longestCheckoutTime = oldestActiveConnection.getCheckoutTime();
-            if (longestCheckoutTime > poolMaximumCheckoutTime) {
+            long longestCheckoutTime = oldestActiveConnection.getCheckoutTime();// 获取最旧连接存在的时间
+            if (longestCheckoutTime > poolMaximumCheckoutTime) {// 最旧连接存在时间大于池最大连接时间
               // Can claim overdue connection
-              state.claimedOverdueConnectionCount++;
+              state.claimedOverdueConnectionCount++;// 连接超时数加一
               state.accumulatedCheckoutTimeOfOverdueConnections += longestCheckoutTime;
               state.accumulatedCheckoutTime += longestCheckoutTime;
-              state.activeConnections.remove(oldestActiveConnection);
-              if (!oldestActiveConnection.getRealConnection().getAutoCommit()) {
+              state.activeConnections.remove(oldestActiveConnection);// 将最旧连接从活跃list中去除掉
+              if (!oldestActiveConnection.getRealConnection().getAutoCommit()) {// 若是最旧连接没有设置自动提交，则回滚它的操作
                 try {
                   oldestActiveConnection.getRealConnection().rollback();
                 } catch (SQLException e) {
@@ -448,16 +453,17 @@ public class PooledDataSource implements DataSource {
                   log.debug("Bad connection. Could not roll back");
                 }
               }
+              // 以旧连接的真实连接，创建一个新的连接
               conn = new PooledConnection(oldestActiveConnection.getRealConnection(), this);
               conn.setCreatedTimestamp(oldestActiveConnection.getCreatedTimestamp());
               conn.setLastUsedTimestamp(oldestActiveConnection.getLastUsedTimestamp());
-              oldestActiveConnection.invalidate();
+              oldestActiveConnection.invalidate();// 将最旧连接置为无效
               if (log.isDebugEnabled()) {
                 log.debug("Claimed overdue connection " + conn.getRealHashCode() + ".");
               }
-            } else {
+            } else {// 若是没有连接可用，只能等待
               // Must wait
-              try {
+              try { // 不断循环等待
                 if (!countedWait) {
                   state.hadToWaitCount++;
                   countedWait = true;
@@ -466,25 +472,26 @@ public class PooledDataSource implements DataSource {
                   log.debug("Waiting as long as " + poolTimeToWait + " milliseconds for connection.");
                 }
                 long wt = System.currentTimeMillis();
-                state.wait(poolTimeToWait);
-                state.accumulatedWaitTime += System.currentTimeMillis() - wt;
+                state.wait(poolTimeToWait);// 每次设置要等待的时间为20000
+                state.accumulatedWaitTime += System.currentTimeMillis() - wt;// 等待了多长时间
               } catch (InterruptedException e) {
                 break;
               }
             }
           }
         }
-        if (conn != null) {
+        if (conn != null) {// 连接不为空
           // ping to server and check the connection is valid or not
-          if (conn.isValid()) {
-            if (!conn.getRealConnection().getAutoCommit()) {
+          if (conn.isValid()) {// 判断连接是否合法，只有合法连接才能用
+            if (!conn.getRealConnection().getAutoCommit()) {// 若是没有设置自动提交，先执行回滚操作
               conn.getRealConnection().rollback();
             }
+            // 连接类型码是个hashcode
             conn.setConnectionTypeCode(assembleConnectionTypeCode(dataSource.getUrl(), username, password));
             conn.setCheckoutTimestamp(System.currentTimeMillis());
             conn.setLastUsedTimestamp(System.currentTimeMillis());
-            state.activeConnections.add(conn);
-            state.requestCount++;
+            state.activeConnections.add(conn);// 活跃的连接数加1
+            state.requestCount++;// 请求的数量加一
             state.accumulatedRequestTime += System.currentTimeMillis() - t;
           } else {
             if (log.isDebugEnabled()) {
@@ -517,7 +524,7 @@ public class PooledDataSource implements DataSource {
 
   /**
    * Method to check to see if a connection is still usable
-   *
+   * 检查连接是否可用的方法
    * @param conn - the connection to check
    * @return True if the connection is still usable
    */
@@ -534,12 +541,13 @@ public class PooledDataSource implements DataSource {
     }
 
     if (result) {
-      if (poolPingEnabled) {
+      if (poolPingEnabled) {// 能不能ping连接池
         if (poolPingConnectionsNotUsedFor >= 0 && conn.getTimeElapsedSinceLastUse() > poolPingConnectionsNotUsedFor) {
           try {
             if (log.isDebugEnabled()) {
               log.debug("Testing connection " + conn.getRealHashCode() + " ...");
             }
+            // 获取真实连接，执行poolPingQuery的操作，判断是否能连接
             Connection realConn = conn.getRealConnection();
             try (Statement statement = realConn.createStatement()) {
               statement.executeQuery(poolPingQuery).close();
@@ -571,7 +579,7 @@ public class PooledDataSource implements DataSource {
 
   /**
    * Unwraps a pooled connection to get to the 'real' connection
-   *
+   * 对一个池化的连接卸妆为真实连接
    * @param conn - the pooled connection to unwrap
    * @return The 'real' connection
    */

@@ -101,7 +101,7 @@ class LogFactoryTest {
 
   private void logSomething(Log log) {
     log.warn("Warning message.");
-    log.debug("Debug message.");
+    log.debug("Debug message.");// error会输出到控制台
     log.error("Error message.");
     log.error("Error with Exception.", new Exception("Test exception."));
   }

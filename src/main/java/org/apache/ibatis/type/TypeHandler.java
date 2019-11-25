@@ -22,18 +22,61 @@ import java.sql.SQLException;
 
 /**
  * @author Clinton Begin
+ * setParameter是用来将java类型转化为jdbc类型的，而getResult是用来将jdbc类型转换为java类型的。
+ * 而类型控制器就是充当这两者转换的控件
  */
 public interface TypeHandler<T> {
 
+  /**
+   * 设置 PreparedStatement 的指定参数
+   *
+   * Java Type => JDBC Type
+   *
+   * @param ps PreparedStatement 对象
+   * @param i 参数占位符的位置
+   * @param parameter 参数
+   * @param jdbcType JDBC 类型
+   * @throws SQLException 当发生 SQL 异常时
+   */
   void setParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException;
 
   /**
    * @param columnName Colunm name, when configuration <code>useColumnLabel</code> is <code>false</code>
    */
+  /**
+   * 获得 ResultSet 的指定字段的值
+   *
+   * JDBC Type => Java Type
+   *
+   * @param rs ResultSet 对象
+   * @param columnName 字段名
+   * @return 值
+   * @throws SQLException 当发生 SQL 异常时
+   */
   T getResult(ResultSet rs, String columnName) throws SQLException;
 
+  /**
+   * 获得 ResultSet 的指定字段的值
+   *
+   * JDBC Type => Java Type
+   *
+   * @param rs ResultSet 对象
+   * @param columnIndex 字段位置
+   * @return 值
+   * @throws SQLException 当发生 SQL 异常时
+   */
   T getResult(ResultSet rs, int columnIndex) throws SQLException;
 
+  /**
+   * 获得 CallableStatement 的指定字段的值
+   *
+   * JDBC Type => Java Type
+   *
+   * @param cs CallableStatement 对象，支持调用存储过程
+   * @param columnIndex 字段位置
+   * @return 值
+   * @throws SQLException
+   */
   T getResult(CallableStatement cs, int columnIndex) throws SQLException;
 
 }

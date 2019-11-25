@@ -230,7 +230,7 @@ class PooledConnection implements InvocationHandler {
    * @see java.lang.reflect.InvocationHandler#invoke(Object, java.lang.reflect.Method, Object[])
    */
   @Override
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable { // 执行代理连接器的关闭连接方法
     String methodName = method.getName();
     if (CLOSE.equals(methodName)) {
       dataSource.pushConnection(this);

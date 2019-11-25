@@ -139,11 +139,12 @@ public class TypeAliasRegistry {
   }
 
   public void registerAlias(Class<?> type) {
-    String alias = type.getSimpleName();
-    Alias aliasAnnotation = type.getAnnotation(Alias.class);
-    if (aliasAnnotation != null) {
+    String alias = type.getSimpleName();// 获取简称，就是Blog
+    Alias aliasAnnotation = type.getAnnotation(Alias.class);// 获取该类的别名注解
+    if (aliasAnnotation != null) {// 若有设置别名注解
       alias = aliasAnnotation.value();
     }
+    // 放到typeAliases的map中，其中key值被转化为小写
     registerAlias(alias, type);
   }
 

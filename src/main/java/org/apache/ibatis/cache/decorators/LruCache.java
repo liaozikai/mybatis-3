@@ -50,6 +50,7 @@ public class LruCache implements Cache {
     keyMap = new LinkedHashMap<Object, Object>(size, .75F, true) {
       private static final long serialVersionUID = 4267176411845948333L;
 
+      // 这个方法也相当漂亮，比较少看到这样的写法。每次put操作，就会调用该方法，并且eldest对象是链表的第一个元素
       @Override
       protected boolean removeEldestEntry(Map.Entry<Object, Object> eldest) {
         boolean tooBig = size() > size;
@@ -69,7 +70,7 @@ public class LruCache implements Cache {
 
   @Override
   public Object getObject(Object key) {
-    keyMap.get(key); //touch
+    keyMap.get(key); //touch 这里相当漂亮，每次get操作，就会将最新访问的对象放到链表的最后面，这样链表头指针指向的就是最老的元素
     return delegate.getObject(key);
   }
 

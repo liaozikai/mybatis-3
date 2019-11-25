@@ -54,7 +54,8 @@ class ArrayTypeHandlerTest extends BaseTypeHandlerTest {
     Array array = mock(Array.class);
     when(connection.createArrayOf(anyString(), any(String[].class))).thenReturn(array);
     
-    TYPE_HANDLER.setParameter(ps, 1, new String[] { "Hello World" }, JdbcType.ARRAY);
+    TYPE_HANDLER.setParameter(ps, 1, new String[] { "Hello World","sdfesdfer" }, JdbcType.ARRAY);
+    TYPE_HANDLER.setParameter(ps, 2, new Integer[] { 1,2 }, JdbcType.ARRAY);
     verify(ps).setArray(1, array);
     verify(array).free();
   }

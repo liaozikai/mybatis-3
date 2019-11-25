@@ -28,6 +28,7 @@ import org.apache.ibatis.session.SqlSession;
 public class MapperProxyFactory<T> {
 
   private final Class<T> mapperInterface;
+  // 该map用于放置接口方法和xml文件方法的映射关系
   private final Map<Method, MapperMethod> methodCache = new ConcurrentHashMap<>();
 
   public MapperProxyFactory(Class<T> mapperInterface) {

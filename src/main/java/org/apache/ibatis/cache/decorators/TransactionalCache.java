@@ -26,6 +26,7 @@ import org.apache.ibatis.logging.LogFactory;
 
 /**
  * The 2nd level cache transactional buffer.
+ * 事务二级缓存
  * <p>
  * This class holds all cache entries that are to be added to the 2nd level cache during a Session.
  * Entries are sent to the cache when commit is called or discarded if the Session is rolled back.
@@ -46,7 +47,7 @@ public class TransactionalCache implements Cache {
 
   public TransactionalCache(Cache delegate) {
     this.delegate = delegate;
-    this.clearOnCommit = false;
+    this.clearOnCommit = false; // 提交时清除默认为false
     this.entriesToAddOnCommit = new HashMap<>();
     this.entriesMissedInCache = new HashSet<>();
   }
@@ -63,9 +64,9 @@ public class TransactionalCache implements Cache {
 
   @Override
   public Object getObject(Object key) {
-    // issue #116
+    // issue #116 获取内容是直接从二级缓存中获取
     Object object = delegate.getObject(key);
-    if (object == null) {
+    if (object == null) {// 若对象为空，则将该key值方法未命中的集合中
       entriesMissedInCache.add(key);
     }
     // issue #146
@@ -78,6 +79,7 @@ public class TransactionalCache implements Cache {
 
   @Override
   public void putObject(Object key, Object object) {
+    // 这里是将要提交的内容放在一个map中（一级缓存）
     entriesToAddOnCommit.put(key, object);
   }
 
@@ -93,10 +95,12 @@ public class TransactionalCache implements Cache {
   }
 
   public void commit() {
-    if (clearOnCommit) {
+    if (clearOnCommit) {// 若是提交时清除为true，则提交的时候就清除缓存
       delegate.clear();
     }
+    // 刷新缓存，将一级缓存中的内容放入二级缓存
     flushPendingEntries();
+    // 清除掉所有的一级缓存内容（命中与非命中的）
     reset();
   }
 

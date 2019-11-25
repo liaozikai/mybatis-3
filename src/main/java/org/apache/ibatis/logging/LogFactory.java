@@ -30,7 +30,7 @@ public final class LogFactory {
 
   private static Constructor<? extends Log> logConstructor;
 
-  static {
+  static {// 在LogFactory加载的过程中，就会加载这些日志插件。tryImplementation方法中，如果logConstructor如果已经设置值，就不会再加载其他日志了。所以，如果第一个日志加载了，就不会加载其他的了。
     tryImplementation(LogFactory::useSlf4jLogging);
     tryImplementation(LogFactory::useCommonsLogging);
     tryImplementation(LogFactory::useLog4J2Logging);
@@ -55,6 +55,7 @@ public final class LogFactory {
     }
   }
 
+  // 特别注意，这些方法是同步的，加了关键字synchronized
   public static synchronized void useCustomLogging(Class<? extends Log> clazz) {
     setImplementation(clazz);
   }
@@ -87,8 +88,9 @@ public final class LogFactory {
     setImplementation(org.apache.ibatis.logging.nologging.NoLoggingImpl.class);
   }
 
+  // 这段代码实在是太漂亮了，多学习学习
   private static void tryImplementation(Runnable runnable) {
-    if (logConstructor == null) {
+    if (logConstructor == null) {// 判断logConstructor为null后，就启动一个线程跑（LogFactory::useSlf4jLogging）这些方法
       try {
         runnable.run();
       } catch (Throwable t) {
@@ -99,7 +101,9 @@ public final class LogFactory {
 
   private static void setImplementation(Class<? extends Log> implClass) {
     try {
+      // 获得指定类的构造函数
       Constructor<? extends Log> candidate = implClass.getConstructor(String.class);
+      // 通过构造函数构造实例。这里注意，这里用了反射的方法，通过断点，以Slf4jImpl为例，可以看到调用了public Slf4jImpl(String clazz)方法
       Log log = candidate.newInstance(LogFactory.class.getName());
       if (log.isDebugEnabled()) {
         log.debug("Logging initialized using '" + implClass + "' adapter.");

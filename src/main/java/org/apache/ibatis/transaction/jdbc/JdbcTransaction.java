@@ -131,6 +131,8 @@ public class JdbcTransaction implements Transaction {
     }
   }
 
+  // 其他方法相对简单，但是这里，在获取连接的时候，就设置了该连接的事务，并设置了是否自动提交
+  // 这里是将连接交给事务去处理，看源代码就能够清晰的了解事务的本质
   protected void openConnection() throws SQLException {
     if (log.isDebugEnabled()) {
       log.debug("Opening JDBC Connection");

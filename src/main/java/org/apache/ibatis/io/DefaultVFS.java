@@ -36,13 +36,14 @@ import org.apache.ibatis.logging.LogFactory;
 
 /**
  * A default implementation of {@link VFS} that works for most application servers.
- *
+ * 对于大多数应用服务器而言默认使用的VFS，该方法主要是用于找出指定路径的字符串表示
  * @author Ben Gunter
  */
 public class DefaultVFS extends VFS {
   private static final Log log = LogFactory.getLog(DefaultVFS.class);
 
   /** The magic header that indicates a JAR (ZIP) file. */
+  // 该魔数头表明是一个类型为jar（zip）文件。对于魔数，深入jvm也可以知道每个class都有字段记录该class文件是哪个版本的jdk
   private static final byte[] JAR_MAGIC = { 'P', 'K', 3, 4 };
 
   @Override
@@ -51,7 +52,7 @@ public class DefaultVFS extends VFS {
   }
 
   @Override
-  public List<String> list(URL url, String path) throws IOException {
+  public List<String> list(URL url, String path) throws IOException {// url=file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io path=org/apache/ibatis/io
     InputStream is = null;
     try {
       List<String> resources = new ArrayList<>();
@@ -94,6 +95,17 @@ public class DefaultVFS extends VFS {
              * the class loader as a child of the current resource. If any line fails
              * then we assume the current resource is not a directory.
              */
+            // 如果该路径是一个目录的话，获取该目录下的所有文件类，当url为file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io
+            // 则 lines为
+            // 0 = "ClassLoaderWrapperTest.class"
+            //1 = "ExternalResourcesTest.class"
+            //2 = "ResolverUtilTest.class"
+            //3 = "ResolverUtilTest$1.class"
+            //4 = "ResolverUtilTest$TestMapper.class"
+            //5 = "ResourcesTest.class"
+            //6 = "VFSTest.class"
+            //7 = "VFSTest$1.class"
+            //8 = "VFSTest$InstanceGetterProcedure.class"
             is = url.openStream();
             List<String> lines = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
@@ -140,17 +152,17 @@ public class DefaultVFS extends VFS {
         }
 
         // The URL prefix to use when recursively listing child resources
-        String prefix = url.toExternalForm();
+        String prefix = url.toExternalForm();// file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io
         if (!prefix.endsWith("/")) {
-          prefix = prefix + "/";
+          prefix = prefix + "/";// file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io/
         }
 
         // Iterate over immediate children, adding files and recursing into directories
-        for (String child : children) {
-          String resourcePath = path + "/" + child;
+        for (String child : children) {// ClassLoaderWrapperTest.class
+          String resourcePath = path + "/" + child; // org/apache/ibatis/io/ClassLoaderWrapperTest.class
           resources.add(resourcePath);
-          URL childUrl = new URL(prefix + child);
-          resources.addAll(list(childUrl, resourcePath));
+          URL childUrl = new URL(prefix + child);// file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io/ClassLoaderWrapperTest.class
+          resources.addAll(list(childUrl, resourcePath)); // 这里注意，它会加载所给定的路径下的所有文件，这是递归查找，最后，resources就是获取所有该路径下的class文件
         }
       }
 
@@ -169,7 +181,7 @@ public class DefaultVFS extends VFS {
   /**
    * List the names of the entries in the given {@link JarInputStream} that begin with the
    * specified {@code path}. Entries will match with or without a leading slash.
-   *
+   * 列出给定的JarInputStream中以指定的path开头的条目的名称。 条目将以斜杠或不带斜杠匹配。
    * @param jar The JAR input stream
    * @param path The leading path to match
    * @return The names of all the matching entries
@@ -212,9 +224,10 @@ public class DefaultVFS extends VFS {
    * by the URL. That is, assuming the URL references a JAR entry, this method will return a URL
    * that references the JAR file containing the entry. If the JAR cannot be located, then this
    * method returns null.
-   *
-   * @param url The URL of the JAR entry.
-   * @return The URL of the JAR file, if one is found. Null if not.
+   * 尝试解构给定的URL以查找包含URL引用的资源的JAR文件。 也就是说，假设URL引用了JAR条目，
+   * 则此方法将返回引用包含该条目的JAR文件的URL。 如果找不到JAR，则此方法返回null。
+   * @param url The URL of the JAR entry. jar实体的url路径
+   * @return The URL of the JAR file, if one is found. Null if not. jar文件的url，如果找到就返回一个url，没有就返回null
    * @throws MalformedURLException
    */
   protected URL findJarForResource(URL url) throws MalformedURLException {
@@ -298,7 +311,7 @@ public class DefaultVFS extends VFS {
   /**
    * Converts a Java package name to a path that can be looked up with a call to
    * {@link ClassLoader#getResources(String)}.
-   *
+   * 转换一个java包名到路径，这样能够用getResources方法来调用资源
    * @param packageName The Java package name to convert to a path
    */
   protected String getPackagePath(String packageName) {
@@ -307,7 +320,7 @@ public class DefaultVFS extends VFS {
 
   /**
    * Returns true if the resource located at the given URL is a JAR file.
-   *
+   * 如果路径定位到的资源是一个jar文件就返回true
    * @param url The URL of the resource to test.
    */
   protected boolean isJar(URL url) {
@@ -316,7 +329,7 @@ public class DefaultVFS extends VFS {
 
   /**
    * Returns true if the resource located at the given URL is a JAR file.
-   *
+   * 如果路径定位到的资源是一个jar文件就返回true
    * @param url The URL of the resource to test.
    * @param buffer A buffer into which the first few bytes of the resource are read. The buffer
    *            must be at least the size of {@link #JAR_MAGIC}. (The same buffer may be reused
@@ -325,6 +338,7 @@ public class DefaultVFS extends VFS {
   protected boolean isJar(URL url, byte[] buffer) {
     InputStream is = null;
     try {
+      // 读取前几位，判断是否jar文件
       is = url.openStream();
       is.read(buffer, 0, JAR_MAGIC.length);
       if (Arrays.equals(buffer, JAR_MAGIC)) {

@@ -31,10 +31,12 @@ public final class PropertyCopier {
   public static void copyBeanProperties(Class<?> type, Object sourceBean, Object destinationBean) {
     Class<?> parent = type;
     while (parent != null) {
+      // 获取当前类的所有声明字段
       final Field[] fields = parent.getDeclaredFields();
-      for (Field field : fields) {
+      for (Field field : fields) {// 对每个字段进行操作
         try {
           try {
+            // 将目标bean与字段值进行映射，放在field中，而这些字段是放在type中的
             field.set(destinationBean, field.get(sourceBean));
           } catch (IllegalAccessException e) {
             if (Reflector.canControlMemberAccessible()) {
@@ -48,6 +50,7 @@ public final class PropertyCopier {
           // Nothing useful to do, will only fail on final fields, which will be ignored.
         }
       }
+      // 特别注意这里，这里是不断往上获取父类，也就是继承关系的所有字段被会被处理
       parent = parent.getSuperclass();
     }
   }

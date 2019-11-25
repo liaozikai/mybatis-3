@@ -47,16 +47,18 @@ public class XMLLanguageDriver implements LanguageDriver {
   @Override
   public SqlSource createSqlSource(Configuration configuration, String script, Class<?> parameterType) {
     // issue #3
-    if (script.startsWith("<script>")) {
+    if (script.startsWith("<script>")) {// 如果传递进来的脚本以<script>开头,找遍全文，好像都没有以它开头的例子，暂时不管
       XPathParser parser = new XPathParser(script, false, configuration.getVariables(), new XMLMapperEntityResolver());
       return createSqlSource(configuration, parser.evalNode("/script"), parameterType);
     } else {
       // issue #127
+      // 如果不是以script脚本开头，则调用下面的方法解析。parse方法是将脚本中带${}参数进行替换赋值
       script = PropertyParser.parse(script, configuration.getVariables());
+      // 将脚本进行封装转换为textSqlNode
       TextSqlNode textSqlNode = new TextSqlNode(script);
-      if (textSqlNode.isDynamic()) {
+      if (textSqlNode.isDynamic()) {// 若textSqlNode为动态的，则创建动态的sqlSource
         return new DynamicSqlSource(configuration, textSqlNode);
-      } else {
+      } else {// 否则创建rawSqlSource
         return new RawSqlSource(configuration, script, parameterType);
       }
     }

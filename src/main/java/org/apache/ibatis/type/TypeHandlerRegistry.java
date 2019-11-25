@@ -234,11 +234,22 @@ public final class TypeHandlerRegistry {
     if (ParamMap.class.equals(type)) {
       return null;
     }
+    // 从这里可以看出，一个java类型可以对应多个jdbcType。如，当type是String类型时，
+    // 对应的jdbcHandlerMap为
+    // 0 = {HashMap$Node@1924} "null" -> "class java.lang.String"
+    //1 = {HashMap$Node@1925} "NCLOB" -> "class java.lang.String"
+    //2 = {HashMap$Node@1926} "CHAR" -> "class java.lang.String"
+    //3 = {HashMap$Node@1927} "NVARCHAR" -> "class java.lang.String"
+    //4 = {HashMap$Node@1928} "CLOB" -> "class java.lang.String"
+    //5 = {HashMap$Node@1929} "NCHAR" -> "class java.lang.String"
+    //6 = {HashMap$Node@1930} "SQLXML" -> "class java.lang.String"
+    //7 = {HashMap$Node@1931} "LONGVARCHAR" -> "class java.lang.String"
+    //8 = {HashMap$Node@1932} "VARCHAR" -> "class java.lang.String"
     Map<JdbcType, TypeHandler<?>> jdbcHandlerMap = getJdbcHandlerMap(type);
     TypeHandler<?> handler = null;
     if (jdbcHandlerMap != null) {
       handler = jdbcHandlerMap.get(jdbcType);
-      if (handler == null) {
+      if (handler == null) {// 如果连handler都为null，则返回一个NULL_TYPE_HANDLER_MAP
         handler = jdbcHandlerMap.get(null);
       }
       if (handler == null) {
@@ -386,6 +397,13 @@ public final class TypeHandlerRegistry {
     register((Type) type, jdbcType, handler);
   }
 
+  /**
+   * 其他所有的register方法，最后都调用到这里了。在该类初始化的过程中，就对调用该方法来设置typeHandlerMap字段。
+   * 其中，每个javaType可能对应多个TypeHandler。具体可看getTypeHandler方法。
+   * @param javaType
+   * @param jdbcType
+   * @param handler
+   */
   private void register(Type javaType, JdbcType jdbcType, TypeHandler<?> handler) {
     if (javaType != null) {
       Map<JdbcType, TypeHandler<?>> map = typeHandlerMap.get(javaType);

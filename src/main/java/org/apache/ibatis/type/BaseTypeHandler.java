@@ -53,11 +53,11 @@ public abstract class BaseTypeHandler<T> extends TypeReference<T> implements Typ
 
   @Override
   public void setParameter(PreparedStatement ps, int i, T parameter, JdbcType jdbcType) throws SQLException {
-    if (parameter == null) {
-      if (jdbcType == null) {
+    if (parameter == null) {// 若参数为空
+      if (jdbcType == null) {// jdbc类型也为空，则抛出异常。（对于所有可谓空的参数必须指定jdbc类型）
         throw new TypeException("JDBC requires that the JdbcType must be specified for all nullable parameters.");
       }
-      try {
+      try {// jdbc类型不为空，则设置对应的jdbc类型，这里将null类型做统一处理
         ps.setNull(i, jdbcType.TYPE_CODE);
       } catch (SQLException e) {
         throw new TypeException("Error setting null for parameter #" + i + " with JdbcType " + jdbcType + " . "

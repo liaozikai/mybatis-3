@@ -25,7 +25,7 @@ import org.apache.ibatis.cache.Cache;
 /**
  * Weak Reference cache decorator.
  * Thanks to Dr. Heinz Kabutz for his guidance here.
- *
+ * 弱引用和软引用的区别。当内存够用时，垃圾回收不会回收软引用，而会回收弱引用。当内存不够用时，才会回收软引用
  * @author Clinton Begin
  */
 public class WeakCache implements Cache {

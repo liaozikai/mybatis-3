@@ -25,14 +25,14 @@ import org.apache.ibatis.cache.Cache;
 /**
  * Soft Reference cache decorator
  * Thanks to Dr. Heinz Kabutz for his guidance here.
- *
+ * 软引用缓存装饰器
  * @author Clinton Begin
  */
 public class SoftCache implements Cache {
-  private final Deque<Object> hardLinksToAvoidGarbageCollection;
-  private final ReferenceQueue<Object> queueOfGarbageCollectedEntries;
+  private final Deque<Object> hardLinksToAvoidGarbageCollection;// 避免垃圾回收硬连接的队列
+  private final ReferenceQueue<Object> queueOfGarbageCollectedEntries;// 垃圾回收实体队列
   private final Cache delegate;
-  private int numberOfHardLinks;
+  private int numberOfHardLinks;// 硬连接的数量
 
   public SoftCache(Cache delegate) {
     this.delegate = delegate;
@@ -48,7 +48,7 @@ public class SoftCache implements Cache {
 
   @Override
   public int getSize() {
-    removeGarbageCollectedItems();
+    removeGarbageCollectedItems();// 删除需被垃圾回收的软引用
     return delegate.getSize();
   }
 
@@ -68,7 +68,7 @@ public class SoftCache implements Cache {
     Object result = null;
     @SuppressWarnings("unchecked") // assumed delegate cache is totally managed by this cache
     SoftReference<Object> softReference = (SoftReference<Object>) delegate.getObject(key);
-    if (softReference != null) {
+    if (softReference != null) {// 软引用不为空，并且其get的内容不为空，则将其转为硬引用
       result = softReference.get();
       if (result == null) {
         delegate.removeObject(key);
@@ -103,6 +103,7 @@ public class SoftCache implements Cache {
   private void removeGarbageCollectedItems() {
     SoftEntry sv;
     while ((sv = (SoftEntry) queueOfGarbageCollectedEntries.poll()) != null) {
+      // 将垃圾回收的软引用从缓存中删除
       delegate.removeObject(sv.key);
     }
   }

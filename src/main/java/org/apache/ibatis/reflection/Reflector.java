@@ -62,12 +62,19 @@ public class Reflector {
 
   public Reflector(Class<?> clazz) {
     type = clazz;
+    // 设置默认构造器
     addDefaultConstructor(clazz);
+    // 获取类的get方法，并设置到getMethods和getTypes中
     addGetMethods(clazz);
+    // 获取类的set方法，并设置到setMethods和setTypes中
     addSetMethods(clazz);
+    // 若属于类字段但是没有设置get或set方法，则进行处理并放到method和type中
     addFields(clazz);
+    // 获取所有可读的字段设置到readablePropertyNames中
     readablePropertyNames = getMethods.keySet().toArray(new String[0]);
+    // 获取所有可写的字段设置到writablePropertyNames中
     writablePropertyNames = setMethods.keySet().toArray(new String[0]);
+    // 设置key为全大写，value为字段属性的键值对map
     for (String propName : readablePropertyNames) {
       caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
     }
@@ -84,12 +91,16 @@ public class Reflector {
 
   private void addGetMethods(Class<?> clazz) {
     Map<String, List<Method>> conflictingGetters = new HashMap<>();
+    // 获取类的所有方法
     Method[] methods = getClassMethods(clazz);
+    // .filter方法是将有参数的方法过滤掉，也将不是get方法过滤掉
+    //  foreach方法是将所有的方法都放到list中，然后放进以name为key值，以list为value值的map中，这个map就是conflictingGetters
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
       .forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
     resolveGetterConflicts(conflictingGetters);
   }
 
+  // 逻辑很简单，断点很容易理解处理过程
   private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
     for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
       Method winner = null;

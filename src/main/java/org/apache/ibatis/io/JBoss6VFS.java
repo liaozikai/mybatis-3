@@ -85,7 +85,7 @@ public class JBoss6VFS extends VFS {
   /** Find all the classes and methods that are required to access the JBoss 6 VFS. */
   protected static synchronized void initialize() {
     if (valid == null) {
-      // Assume valid. It will get flipped later if something goes wrong.
+      // Assume valid. It will get flipped later if something goes wrong. 假设有效。 如果出问题了，它将在以后翻转。
       valid = Boolean.TRUE;
 
       // Look up and verify required classes

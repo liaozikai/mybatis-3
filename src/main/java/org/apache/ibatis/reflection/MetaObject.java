@@ -29,6 +29,7 @@ import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 
 /**
  * @author Clinton Begin
+ * 该类其实是对反射类对象的操作集合类。可以获得该类对应的原对象，进行get和set操作，也可以获取所有get和set方法和类型
  */
 public class MetaObject {
 
@@ -109,6 +110,7 @@ public class MetaObject {
     return objectWrapper.hasGetter(name);
   }
 
+  // getValue逻辑和set逻辑相差不多，都是判断是对象还是属性，然后做相应操作的
   public Object getValue(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
@@ -123,20 +125,25 @@ public class MetaObject {
     }
   }
 
+  // 这个setValue方法是有门道在里面的
   public void setValue(String name, Object value) {
+    // 获取对应属性的名称
     PropertyTokenizer prop = new PropertyTokenizer(name);
-    if (prop.hasNext()) {
+    if (prop.hasNext()) {// 判断是否有子属性
+      // 若是有子属性，那么久获取原属性的meteObjct对象
       MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
-      if (metaValue == SystemMetaObject.NULL_META_OBJECT) {
+      if (metaValue == SystemMetaObject.NULL_META_OBJECT) {// 若是为空对象
         if (value == null) {
           // don't instantiate child path if value is null
           return;
-        } else {
+        } else {// 若不为空对象，则调用instantiatePropertyValue这个方法。逻辑就是构造对象的metaObject，然后还是调用set方法，并无大差别
           metaValue = objectWrapper.instantiatePropertyValue(name, prop, objectFactory);
         }
       }
+      // 若该对象已经实例化，则直接设置该实例化等对象的值
       metaValue.setValue(prop.getChildren(), value);
     } else {
+      // 这里是直接设置值
       objectWrapper.set(prop, value);
     }
   }

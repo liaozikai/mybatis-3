@@ -29,16 +29,17 @@ import org.apache.ibatis.logging.LogFactory;
 
 /**
  * Provides a very simple API for accessing resources within an application server.
- *
+ * 提供一个非常简单的api用于在应用服务器中访问资源
  * @author Ben Gunter
  */
 public abstract class VFS {
   private static final Log log = LogFactory.getLog(VFS.class);
 
-  /** The built-in implementations. */
+  /** The built-in implementations. */ // 内置实现类
   public static final Class<?>[] IMPLEMENTATIONS = { JBoss6VFS.class, DefaultVFS.class };
 
   /** The list to which implementations are added by {@link #addImplClass(Class)}. */
+  // 将手动添加的Class实现放到list
   public static final List<Class<? extends VFS>> USER_IMPLEMENTATIONS = new ArrayList<>();
 
   /** Singleton instance holder. */
@@ -48,13 +49,14 @@ public abstract class VFS {
     @SuppressWarnings("unchecked")
     static VFS createVFS() {
       // Try the user implementations first, then the built-ins
+      // 将所有的VFS实现都放到impls的list中
       List<Class<? extends VFS>> impls = new ArrayList<>();
       impls.addAll(USER_IMPLEMENTATIONS);
       impls.addAll(Arrays.asList((Class<? extends VFS>[]) IMPLEMENTATIONS));
 
       // Try each implementation class until a valid one is found
       VFS vfs = null;
-      for (int i = 0; vfs == null || !vfs.isValid(); i++) {
+      for (int i = 0; vfs == null || !vfs.isValid(); i++) {// 遍历，直到找到一个合法的VFS并返回，注意for循环条件，是找到不为null且合法的VFS
         Class<? extends VFS> impl = impls.get(i);
         try {
           vfs = impl.getDeclaredConstructor().newInstance();
@@ -81,6 +83,7 @@ public abstract class VFS {
   /**
    * Get the singleton {@link VFS} instance. If no {@link VFS} implementation can be found for the
    * current environment, then this method returns null.
+   * 获取一个单例的VFS实例，如果在当前环境找不到VFS实现，那么就返回null
    */
   public static VFS getInstance() {
     return VFSHolder.INSTANCE;
@@ -99,6 +102,7 @@ public abstract class VFS {
   }
 
   /** Get a class by name. If the class is not found then return null. */
+  // 通过name获取一个类，如果该类没有找到就返回null
   protected static Class<?> getClass(String className) {
     try {
       return Thread.currentThread().getContextClassLoader().loadClass(className);
@@ -135,7 +139,7 @@ public abstract class VFS {
 
   /**
    * Invoke a method on an object and return whatever it returns.
-   *
+   * 调用对象的一个方法并且返回该对象方法返回的东西
    * @param method The method to invoke.
    * @param object The instance or class (for static methods) on which to invoke the method.
    * @param parameters The parameters to pass to the method.
@@ -162,7 +166,7 @@ public abstract class VFS {
   /**
    * Get a list of {@link URL}s from the context classloader for all the resources found at the
    * specified path.
-   *
+   * 从上下文类加载器中获取在指定路径上找到的所有资源的URL列表。
    * @param path The resource path.
    * @return A list of {@link URL}s, as returned by {@link ClassLoader#getResources(String)}.
    * @throws IOException If I/O errors occur
@@ -177,7 +181,8 @@ public abstract class VFS {
   /**
    * Recursively list the full resource path of all the resources that are children of the
    * resource identified by a URL.
-   *
+   * 115/5000
+   * 递归列出作为URL标识的资源的子级的所有资源的完整资源路径。
    * @param url The URL that identifies the resource to list.
    * @param forPath The path to the resource that is identified by the URL. Generally, this is the
    *            value passed to {@link #getResources(String)} to get the resource URL.
@@ -189,13 +194,16 @@ public abstract class VFS {
   /**
    * Recursively list the full resource path of all the resources that are children of all the
    * resources found at the specified path.
-   *
+   * 获取该路径下所有资源的名称
    * @param path The path of the resource(s) to list.
    * @return A list containing the names of the child resources.
    * @throws IOException If I/O errors occur
    */
   public List<String> list(String path) throws IOException {
-    List<String> names = new ArrayList<>();
+    List<String> names = new ArrayList<>(); // 通过path=org/apache/ibatis/io的情况下，getResource得到两个结果
+    // file:/F:/java/mybatis-3/target/test-classes/org/apache/ibatis/io 和
+    // file:/F:/java/mybatis-3/target/classes/org/apache/ibatis/io
+    // 从这里可以看到，getResources会查找包含org.apache.ibatis.io的所有路径，不管是在test-classes还是classes包中
     for (URL url : getResources(path)) {
       names.addAll(list(url, path));
     }

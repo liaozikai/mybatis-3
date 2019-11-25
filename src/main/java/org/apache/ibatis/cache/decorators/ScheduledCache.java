@@ -31,7 +31,7 @@ public class ScheduledCache implements Cache {
   public ScheduledCache(Cache delegate) {
     this.delegate = delegate;
     this.clearInterval = TimeUnit.HOURS.toMillis(1);
-    this.lastClear = System.currentTimeMillis();
+    this.lastClear = System.currentTimeMillis();// 这里在初始化的时候，就设置了最后的清除时间
   }
 
   public void setClearInterval(long clearInterval) {
@@ -43,6 +43,7 @@ public class ScheduledCache implements Cache {
     return delegate.getId();
   }
 
+  // 每个方法在调用之前，都会清除缓存，这种行为是相当清晰明了的
   @Override
   public int getSize() {
     clearWhenStale();
@@ -83,6 +84,7 @@ public class ScheduledCache implements Cache {
   }
 
   private boolean clearWhenStale() {
+    // 这里是每隔一段时间，都会清除数据
     if (System.currentTimeMillis() - lastClear > clearInterval) {
       clear();
       return true;
